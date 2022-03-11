@@ -1,0 +1,6 @@
+[submodule "API"]
+	path = API
+	url = git@github.com:E2E-Squad/API.git
+[submodule "Web"]
+	path = Web
+	url = git@github.com:E2E-Squad/Web.git
