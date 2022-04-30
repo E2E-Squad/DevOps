@@ -33,18 +33,19 @@ else
 	DOCKER		= @echo "$(ERR)ENV is not defined$(NC)", cannot execute: 
 endif
 
+# Define python and pip executables 
+PYTHON			= $(shell which python3)
+ifeq (${PYTHON},)
+	PYTHON		= $(shell which python)
+endif
+# Define python and pip executables 
+PIP				= $(shell which pip3)
+ifeq (${PYTHON},)
+	PIP			= $(shell which pip)
+endif
 ################################################################################
 #                                    Functions                                 #
 ################################################################################
-##define BASH_FUNC_py
-##() {
-##	python3 $@ || python $@
-##}
-##endef
-##export BASH_FUNC_py
-PY = $(python3 $@ || python $@)
-
-PIP = pyp() { pip3 $@ || pip $@; }
 
 ################################################################################
 #                                      Rules                                   #
@@ -74,8 +75,15 @@ setup-db:
 			${DOCKER} exec api python manage.py migrate --noinput
 			${DOCKER} exec api python manage.py createsuperuser --noinput
 
-setup-python:
-			$(call PY, -V)# | grep 3.10 || echo ${ERR}Python 3.10 is required${NC}
+check-python:
+			@${PYTHON} -V | grep 3.10 || \
+				(echo -e >&2 "${ERR}Python 3.10 is required${NC}"; false)
+			@${PIP} -V | grep "python 3.10" || \
+				(echo -e >&2 "${ERR}PIP for Python 3.10 is required${NC}"; false)
+
+setup-python: check-python
+			@echo "Setup Python for local dev"
+			@cd API; pwd; poetry install
 
 web:
 			${DOCKER} build web
