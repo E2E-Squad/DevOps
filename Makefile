@@ -53,7 +53,7 @@ else
 endif
 
 FIRST_TRGT		= $(firstword $(MAKECMDGOALS))
-NEED_ARGS		= test dj
+NEED_ARGS		= dj
 ifneq (, $(filter ${FIRST_TRGT}, ${NEED_ARGS}))
     _ARGS = $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
     $(eval $(_ARGS):;@:)
@@ -94,9 +94,6 @@ start-prod:
 
 down-prod:
 			${DOCKER} ${COMPOSE_PROD} down
-
-test:
-			echo ${ARGS}
 
 setup-env:
 			${call setup_env}
