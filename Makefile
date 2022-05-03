@@ -38,14 +38,38 @@ PYTHON			= $(shell which python3)
 ifeq (${PYTHON},)
 	PYTHON		= $(shell which python)
 endif
+
 # Define python and pip executables 
 PIP				= $(shell which pip3)
 ifeq (${PYTHON},)
 	PIP			= $(shell which pip)
 endif
+
+PTRY			= cd API; poetry
+ifeq (${ENV},local)
+	DJ			= ${PTRY} run python manage.py
+else
+	DJ			= ${DOCKER} exec api python manage.py
+endif
+
+FIRST_TRGT		= $(firstword $(MAKECMDGOALS))
+NEED_ARGS		= test dj
+ifneq (, $(filter ${FIRST_TRGT}, ${NEED_ARGS}))
+    _ARGS = $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+    $(eval $(_ARGS):;@:)
+    ARGS = $(foreach arg,${_ARGS},$(subst +,--,${arg}))
+endif
+
 ################################################################################
 #                                    Functions                                 #
 ################################################################################
+
+define setup_env
+    $(eval ENV_FILE := srcs/$(1).env)
+    @echo " - setup env $(ENV_FILE)"
+    $(eval include srcs/$(1).env)
+    $(eval export)
+endef
 
 ################################################################################
 #                                      Rules                                   #
@@ -71,9 +95,15 @@ start-prod:
 down-prod:
 			${DOCKER} ${COMPOSE_PROD} down
 
+test:
+			echo ${ARGS}
+
+setup-env:
+			${call setup_env}
+
 setup-db:
-			${DOCKER} exec api python manage.py migrate --noinput
-			${DOCKER} exec api python manage.py createsuperuser --noinput
+			${DJ} migrate --noinput
+			${DJ} createsuperuser --noinput
 
 check-python:
 			@${PYTHON} -V | grep 3.10 || \
@@ -82,8 +112,19 @@ check-python:
 				(echo -e >&2 "${ERR}PIP for Python 3.10 is required${NC}"; false)
 
 setup-python: check-python
-			@echo "Setup Python for local dev"
-			@cd API; pwd; poetry install
+			@echo -e "\n${BLU}Install poetry${NC}"
+			@${PIP} install poetry | { grep Installing || echo -e "${OK}Already installed${NC}"; }
+			@echo
+			@${PTRY} install
+
+dj: check-python db setup-env
+			${DJ} ${ARGS}
+
+ddj: db api
+			${DJ} ${ARGS} 
+
+local: setup-python db setup-env setup-db
+			${DJ} runserver 0.0.0.0:8000
 
 web:
 			${DOCKER} build web
